@@ -127,11 +127,13 @@ create policy "write_staff_penalties" on public.penalties
 create or replace function public.create_session(p_type text, p_title text, p_target_laps int)
 returns uuid
 language plpgsql
-security definer
-set search_path = public
 as $$
 declare sid uuid := gen_random_uuid();
 begin
+  if coalesce(auth.jwt() ->> 'role', '') <> 'staff' then
+    raise exception 'insufficient privileges' using errcode = '42501';
+  end if;
+
   insert into public.sessions (id, type, title, target_laps)
   values (sid, p_type, p_title, coalesce(p_target_laps, 20));
   return sid;
@@ -141,43 +143,21 @@ $$;
 create or replace function public.capture_lap(p_session uuid, p_driver uuid, p_absolute_ms int)
 returns int
 language plpgsql
-security definer
-set search_path = public
 as $$
-create policy "read_all_auth_teams" on public.teams for select using (auth.role() = 'authenticated');
-create policy "read_all_auth_drivers" on public.drivers for select using (auth.role() = 'authenticated');
-create policy "read_all_auth_sessions" on public.sessions for select using (auth.role() = 'authenticated');
-create policy "read_all_auth_laps" on public.laps for select using (auth.role() = 'authenticated');
-create policy "read_all_auth_events" on public.events for select using (auth.role() = 'authenticated');
-create policy "read_all_auth_penalties" on public.penalties for select using (auth.role() = 'authenticated');
-
-create policy "write_staff_sessions" on public.sessions for all using (auth.jwt() ->> 'role' = 'staff') with check (auth.jwt() ->> 'role' = 'staff');
-create policy "write_staff_laps" on public.laps for all using (auth.jwt() ->> 'role' = 'staff') with check (auth.jwt() ->> 'role' = 'staff');
-create policy "write_staff_events" on public.events for all using (auth.jwt() ->> 'role' = 'staff') with check (auth.jwt() ->> 'role' = 'staff');
-create policy "write_staff_penalties" on public.penalties for all using (auth.jwt() ->> 'role' = 'staff') with check (auth.jwt() ->> 'role' = 'staff');
-
-create or replace function public.create_session(p_type text, p_title text, p_target_laps int)
-returns uuid language plpgsql security definer as $$
-declare sid uuid := gen_random_uuid();
+declare
+  next_idx int;
+  last_abs int;
+  lap_ms int;
 begin
-  insert into public.sessions (id, type, title, target_laps) values
-  (sid, p_type, p_title, coalesce(p_target_laps, 20));
-  return sid;
-end$$;
+  if coalesce(auth.jwt() ->> 'role', '') <> 'staff' then
+    raise exception 'insufficient privileges' using errcode = '42501';
+  end if;
 
-create or replace function public.capture_lap(p_session uuid, p_driver uuid, p_absolute_ms int)
-returns int language plpgsql security definer as $$
-declare next_idx int;
-declare last_abs int;
-declare lap_ms int;
-begin
   select coalesce(max(lap_index), 0) + 1
     into next_idx
   from public.laps
   where session_id = p_session
     and driver_id = p_driver;
-  select coalesce(max(lap_index), 0) + 1 into next_idx
-  from public.laps where session_id = p_session and driver_id = p_driver;
 
   if next_idx = 1 then
     lap_ms := p_absolute_ms;
@@ -188,9 +168,6 @@ begin
     where session_id = p_session
       and driver_id = p_driver
       and lap_index = next_idx - 1;
-    select absolute_ms into last_abs
-    from public.laps
-    where session_id = p_session and driver_id = p_driver and lap_index = next_idx - 1;
     lap_ms := p_absolute_ms - last_abs;
   end if;
 
@@ -202,4 +179,3 @@ begin
   return next_idx;
 end;
 $$;
-end$$;
