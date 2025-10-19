@@ -1,0 +1,26 @@
+# dependencies
+node_modules
+.pnpm-store
+
+# production
+.next
+out
+
+# misc
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# supabase
+supabase/.temp
+.supabase
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# types
+src/types/supabase.ts
