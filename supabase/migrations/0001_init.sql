@@ -68,17 +68,17 @@ alter table public.laps enable row level security;
 alter table public.events enable row level security;
 alter table public.penalties enable row level security;
 
-create policy if not exists "read_all_auth_teams" on public.teams for select using (auth.role() = 'authenticated');
-create policy if not exists "read_all_auth_drivers" on public.drivers for select using (auth.role() = 'authenticated');
-create policy if not exists "read_all_auth_sessions" on public.sessions for select using (auth.role() = 'authenticated');
-create policy if not exists "read_all_auth_laps" on public.laps for select using (auth.role() = 'authenticated');
-create policy if not exists "read_all_auth_events" on public.events for select using (auth.role() = 'authenticated');
-create policy if not exists "read_all_auth_penalties" on public.penalties for select using (auth.role() = 'authenticated');
+create policy "read_all_auth_teams" on public.teams for select using (auth.role() = 'authenticated');
+create policy "read_all_auth_drivers" on public.drivers for select using (auth.role() = 'authenticated');
+create policy "read_all_auth_sessions" on public.sessions for select using (auth.role() = 'authenticated');
+create policy "read_all_auth_laps" on public.laps for select using (auth.role() = 'authenticated');
+create policy "read_all_auth_events" on public.events for select using (auth.role() = 'authenticated');
+create policy "read_all_auth_penalties" on public.penalties for select using (auth.role() = 'authenticated');
 
-create policy if not exists "write_staff_sessions" on public.sessions for all using (auth.jwt() ->> 'role' = 'staff') with check (auth.jwt() ->> 'role' = 'staff');
-create policy if not exists "write_staff_laps" on public.laps for all using (auth.jwt() ->> 'role' = 'staff') with check (auth.jwt() ->> 'role' = 'staff');
-create policy if not exists "write_staff_events" on public.events for all using (auth.jwt() ->> 'role' = 'staff') with check (auth.jwt() ->> 'role' = 'staff');
-create policy if not exists "write_staff_penalties" on public.penalties for all using (auth.jwt() ->> 'role' = 'staff') with check (auth.jwt() ->> 'role' = 'staff');
+create policy "write_staff_sessions" on public.sessions for all using (auth.jwt() ->> 'role' = 'staff') with check (auth.jwt() ->> 'role' = 'staff');
+create policy "write_staff_laps" on public.laps for all using (auth.jwt() ->> 'role' = 'staff') with check (auth.jwt() ->> 'role' = 'staff');
+create policy "write_staff_events" on public.events for all using (auth.jwt() ->> 'role' = 'staff') with check (auth.jwt() ->> 'role' = 'staff');
+create policy "write_staff_penalties" on public.penalties for all using (auth.jwt() ->> 'role' = 'staff') with check (auth.jwt() ->> 'role' = 'staff');
 
 create or replace function public.create_session(p_type text, p_title text, p_target_laps int)
 returns uuid language plpgsql security definer as $$
