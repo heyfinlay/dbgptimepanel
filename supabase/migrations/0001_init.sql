@@ -68,42 +68,106 @@ alter table public.laps enable row level security;
 alter table public.events enable row level security;
 alter table public.penalties enable row level security;
 
-create policy "read_all_auth_teams" on public.teams for select using (auth.role() = 'authenticated');
-create policy "read_all_auth_drivers" on public.drivers for select using (auth.role() = 'authenticated');
-create policy "read_all_auth_sessions" on public.sessions for select using (auth.role() = 'authenticated');
-create policy "read_all_auth_laps" on public.laps for select using (auth.role() = 'authenticated');
-create policy "read_all_auth_events" on public.events for select using (auth.role() = 'authenticated');
-create policy "read_all_auth_penalties" on public.penalties for select using (auth.role() = 'authenticated');
+drop policy if exists "read_all_auth_teams" on public.teams;
+drop policy if exists "read_all_auth_drivers" on public.drivers;
+drop policy if exists "read_all_auth_sessions" on public.sessions;
+drop policy if exists "read_all_auth_laps" on public.laps;
+drop policy if exists "read_all_auth_events" on public.events;
+drop policy if exists "read_all_auth_penalties" on public.penalties;
 
-create policy "write_staff_sessions" on public.sessions for all using (auth.jwt() ->> 'role' = 'staff') with check (auth.jwt() ->> 'role' = 'staff');
-create policy "write_staff_laps" on public.laps for all using (auth.jwt() ->> 'role' = 'staff') with check (auth.jwt() ->> 'role' = 'staff');
-create policy "write_staff_events" on public.events for all using (auth.jwt() ->> 'role' = 'staff') with check (auth.jwt() ->> 'role' = 'staff');
-create policy "write_staff_penalties" on public.penalties for all using (auth.jwt() ->> 'role' = 'staff') with check (auth.jwt() ->> 'role' = 'staff');
+create policy "read_all_auth_teams" on public.teams
+  for select
+  using (auth.role() = 'authenticated');
+
+create policy "read_all_auth_drivers" on public.drivers
+  for select
+  using (auth.role() = 'authenticated');
+
+create policy "read_all_auth_sessions" on public.sessions
+  for select
+  using (auth.role() = 'authenticated');
+
+create policy "read_all_auth_laps" on public.laps
+  for select
+  using (auth.role() = 'authenticated');
+
+create policy "read_all_auth_events" on public.events
+  for select
+  using (auth.role() = 'authenticated');
+
+create policy "read_all_auth_penalties" on public.penalties
+  for select
+  using (auth.role() = 'authenticated');
+
+drop policy if exists "write_staff_sessions" on public.sessions;
+drop policy if exists "write_staff_laps" on public.laps;
+drop policy if exists "write_staff_events" on public.events;
+drop policy if exists "write_staff_penalties" on public.penalties;
+
+create policy "write_staff_sessions" on public.sessions
+  for all
+  using (coalesce(auth.jwt() ->> 'role', '') = 'staff')
+  with check (coalesce(auth.jwt() ->> 'role', '') = 'staff');
+
+create policy "write_staff_laps" on public.laps
+  for all
+  using (coalesce(auth.jwt() ->> 'role', '') = 'staff')
+  with check (coalesce(auth.jwt() ->> 'role', '') = 'staff');
+
+create policy "write_staff_events" on public.events
+  for all
+  using (coalesce(auth.jwt() ->> 'role', '') = 'staff')
+  with check (coalesce(auth.jwt() ->> 'role', '') = 'staff');
+
+create policy "write_staff_penalties" on public.penalties
+  for all
+  using (coalesce(auth.jwt() ->> 'role', '') = 'staff')
+  with check (coalesce(auth.jwt() ->> 'role', '') = 'staff');
 
 create or replace function public.create_session(p_type text, p_title text, p_target_laps int)
-returns uuid language plpgsql security definer as $$
+returns uuid
+language plpgsql
+as $$
 declare sid uuid := gen_random_uuid();
 begin
-  insert into public.sessions (id, type, title, target_laps) values
-  (sid, p_type, p_title, coalesce(p_target_laps, 20));
+  if coalesce(auth.jwt() ->> 'role', '') <> 'staff' then
+    raise exception 'insufficient privileges' using errcode = '42501';
+  end if;
+
+  insert into public.sessions (id, type, title, target_laps)
+  values (sid, p_type, p_title, coalesce(p_target_laps, 20));
   return sid;
-end$$;
+end;
+$$;
 
 create or replace function public.capture_lap(p_session uuid, p_driver uuid, p_absolute_ms int)
-returns int language plpgsql security definer as $$
-declare next_idx int;
-declare last_abs int;
-declare lap_ms int;
+returns int
+language plpgsql
+as $$
+declare
+  next_idx int;
+  last_abs int;
+  lap_ms int;
 begin
-  select coalesce(max(lap_index), 0) + 1 into next_idx
-  from public.laps where session_id = p_session and driver_id = p_driver;
+  if coalesce(auth.jwt() ->> 'role', '') <> 'staff' then
+    raise exception 'insufficient privileges' using errcode = '42501';
+  end if;
+
+  select coalesce(max(lap_index), 0) + 1
+    into next_idx
+  from public.laps
+  where session_id = p_session
+    and driver_id = p_driver;
 
   if next_idx = 1 then
     lap_ms := p_absolute_ms;
   else
-    select absolute_ms into last_abs
+    select absolute_ms
+      into last_abs
     from public.laps
-    where session_id = p_session and driver_id = p_driver and lap_index = next_idx - 1;
+    where session_id = p_session
+      and driver_id = p_driver
+      and lap_index = next_idx - 1;
     lap_ms := p_absolute_ms - last_abs;
   end if;
 
@@ -113,4 +177,5 @@ begin
   insert into public.events(session_id, type, payload)
   values (p_session, 'LAP_CAPTURE', jsonb_build_object('driver_id', p_driver, 'lap_index', next_idx));
   return next_idx;
-end$$;
+end;
+$$;
