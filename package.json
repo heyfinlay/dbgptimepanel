@@ -1,0 +1,43 @@
+{
+  "name": "dbgp-timing",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.13.1",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "db:types": "supabase gen types typescript --local > src/types/supabase.ts",
+    "db:up": "supabase migration up",
+    "db:reset": "supabase db reset --use-migra --seed supabase/seed.sql"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.48.0",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.1.1",
+    "date-fns": "^3.6.0",
+    "lucide-react": "^0.460.0",
+    "next": "14.2.6",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "tailwind-merge": "^2.5.2",
+    "zustand": "^4.5.2",
+    "@radix-ui/react-slot": "^1.0.4"
+  },
+  "devDependencies": {
+    "@supabase/cli": "^1.201.3",
+    "@types/node": "^20.14.11",
+    "@types/react": "^18.3.4",
+    "@types/react-dom": "^18.3.2",
+    "autoprefixer": "^10.4.19",
+    "drizzle-kit": "^0.26.3",
+    "drizzle-orm": "^0.33.0",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "14.2.6",
+    "postcss": "^8.4.41",
+    "supabase": "^1.191.3",
+    "tailwindcss": "^3.4.13",
+    "typescript": "^5.6.2"
+  }
+}
